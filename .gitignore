@@ -1,0 +1,14 @@
+# --- Figaro MCP servers -----------------------------------------------
+# Local Python dependencies / venvs (never commit)
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+
+# The model weights (large). See README on how to obtain sd-turbo.
+sd-turbo/
+
+# Local data and logs
+*.log
+certs/
+.DS_Store

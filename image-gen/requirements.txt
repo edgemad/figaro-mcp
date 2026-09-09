@@ -1,0 +1,10 @@
+# Figaro Image Gen — local Stable Diffusion XL Turbo MCP server
+# Install:  uv venv .venv && uv pip install -r requirements.txt
+# (or:  python -m venv .venv && .venv/bin/pip install -r requirements.txt)
+fastmcp>=1.30
+diffusers>=0.40
+transformers>=5.0
+accelerate>=1.0
+safetensors>=0.8
+pillow>=10.0
+torch>=2.1

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "figaro-image-gen": {
+      "command": "/ABSOLUTE/PATH/TO/figaro-mcp/image-gen/.venv/bin/mcp",
+      "args": ["run", "/ABSOLUTE/PATH/TO/figaro-mcp/image-gen/server_image.py"]
+    },
+    "figaro-local-agent": {
+      "command": "uvx",
+      "args": ["--from", "mcp[cli]<2", "mcp", "run", "/ABSOLUTE/PATH/TO/figaro-mcp/local-agent/server.py"]
+    }
+  }
+}
