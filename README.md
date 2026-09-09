@@ -136,6 +136,16 @@ to date from the official Jan releases without losing any modifications:
 - From chat, ask the Caretaker to "check for updates" (`check_for_update`) or
   "update Figaro" (`update_figaro`) — it runs the same script in the
   background and reopens the app when done.
+- There is also a tiny **menu-bar helper** (`figaro-updater/`): it shows a
+  download-arrow icon in the menu bar **only when** a newer release is
+  available. One click → "Download & Install" (or use the notification's
+  Download action). It polls every 4 hours and auto-starts at login:
+  ```bash
+  cd figaro-updater && ./build.sh          # compile FigaroUpdater.app
+  cp FigaroUpdater.app ~/figaro-update/     # next to the updater script
+  cp ../scripts/com.figaro.updater.plist ~/Library/LaunchAgents/
+  launchctl load ~/Library/LaunchAgents/com.figaro.updater.plist
+  ```
 
 > Note: the OS-level process name remains "Jan" (embedded in the binary and not
 > patchable) — everything inside the app and everywhere in the filesystem is
