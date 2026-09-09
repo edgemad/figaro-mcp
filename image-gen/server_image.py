@@ -270,9 +270,11 @@ def make_document(name: str, format: str = "docx", content: str = "") -> str:
     _prune_previews()
     url = _asset_url(out_path)
     return (
-        f"File ready (ephemeral — nothing saved to disk). Present it in the "
-        f"chat as a download link so the user can view it in the thread and "
-        f"save it themselves if they want:\n[{doc_name}]({url})"
+        "File created. Copy the line below VERBATIM into your reply so the "
+        "user can view/download the file in the chat thread:\n"
+        f"[{doc_name}]({url})\n"
+        "This file is an ephemeral chat preview, NOT saved to disk, and there "
+        "is no save tool. The user saves it themselves from the link."
     )
 
 
