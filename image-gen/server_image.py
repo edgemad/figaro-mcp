@@ -228,56 +228,22 @@ def generate_image(
     return (
         f"Preview ready in {elapsed:.1f}s. Show it inline in the conversation "
         f"as an image: ![{fname}]({url})\n"
-        "This is an ephemeral chat preview and is NOT saved permanently. "
-        'If the user likes it, tell them to say "save this image".'
+        f"Download link for the user: {url}\n"
+        "This is an ephemeral chat preview and is NOT saved anywhere. "
+        "The user saves it themselves by downloading it from the link."
     )
-
-
-@mcp.tool()
-def save_image(preview_path: str = "", name: str = "") -> str:
-    """Permanently save a preview image. If preview_path is empty, the most
-    recent preview is used. Copies it to ~/Pictures/Figaro and returns the
-    permanent path (as a markdown image so it shows inline).
-    - preview_path: optional exact preview path shown earlier in the chat.
-    - name: optional file name (no extension); auto-generated if empty.
-    """
-    if not preview_path:
-        previews = sorted(
-            list(OUTPUT_DIR.glob("figaro-img-*.png"))
-            + list(OUTPUT_DIR.glob("jan-img-*.png")),
-            key=lambda p: p.stat().st_mtime,
-        )
-        if not previews:
-            return "No preview found to save. Generate an image first."
-        src = previews[-1]
-    else:
-        src = Path(preview_path).expanduser()
-        if not src.is_file():
-            return f"Preview file not found: {preview_path} (it may have been cleaned up)"
-    keep_dir = Path.home() / "Pictures" / "Figaro"
-    keep_dir.mkdir(parents=True, exist_ok=True)
-    stem = name.strip() or src.stem
-    dst = keep_dir / f"{stem}.png"
-    counter = 1
-    while dst.exists():
-        dst = keep_dir / f"{stem}-{counter}.png"
-        counter += 1
-    import shutil
-
-    shutil.copy2(src, dst)
-    return f"Saved permanently to {dst}."
 
 
 @mcp.tool()
 def make_document(name: str, format: str = "docx", content: str = "") -> str:
     """Create a real file from compiled text so the user can view or download
     it in the chat. Writes ONLY an ephemeral preview into the app's preview
-    folder (auto-cleaned); it is NEVER saved permanently. Use this ONLY after
-    the user asks for a file (e.g. 'make it a Word document', 'download it').
+    folder (auto-cleaned); nothing is ever saved to disk permanently.
     - name: file name without extension (e.g. 'freedom-promotions-2026').
     - format: 'docx' (Word, default), 'md', 'txt', or 'rtf'.
     - content: the full document text/markdown to put in the file.
-    Returns a short link the assistant presents inline in the chat."""
+    Return the link to present inline in the chat: [name](url). The user
+    saves the file themselves by clicking the link. Never save any file."""
     fmt = format.lower().lstrip(".")
     if fmt not in ("docx", "md", "txt", "rtf"):
         return f"Unsupported format '{format}'. Use docx, md, txt or rtf."
@@ -304,46 +270,10 @@ def make_document(name: str, format: str = "docx", content: str = "") -> str:
     _prune_previews()
     url = _asset_url(out_path)
     return (
-        f"File created (ephemeral, not saved). View or download it in the "
-        f"chat: {url}\n"
-        "This preview is NOT saved permanently. If the user wants to keep "
-        'it, say "save this document" and I will save it.'
+        f"File ready (ephemeral — nothing saved to disk). Present it in the "
+        f"chat as a download link so the user can view it in the thread and "
+        f"save it themselves if they want:\n[{doc_name}]({url})"
     )
-
-
-@mcp.tool()
-def save_document(preview: str = "") -> str:
-    """Permanently save a document preview (from make_document) into
-    ~/Documents/Figaro. Call ONLY when the user explicitly asks to save the
-    file. - preview: the preview link/path shown in the chat earlier (empty =
-    the most recent document preview)."""
-    if not preview:
-        docs = sorted(
-            list(OUTPUT_DIR.glob("*.docx"))
-            + list(OUTPUT_DIR.glob("*.rtf"))
-            + list(OUTPUT_DIR.glob("*.md"))
-            + list(OUTPUT_DIR.glob("*.txt")),
-            key=lambda p: p.stat().st_mtime,
-        )
-        if not docs:
-            return "No document preview found. Ask me to make a document first."
-        src = docs[-1]
-    else:
-        p = preview.replace("asset://localhost/", "")
-        from urllib.parse import unquote
-        src = Path(unquote(p))
-        if not src.is_file():
-            return f"Document preview not found: {preview}"
-    keep_dir = Path.home() / "Documents" / "Figaro"
-    keep_dir.mkdir(parents=True, exist_ok=True)
-    dst = keep_dir / src.name
-    counter = 1
-    while dst.exists():
-        dst = keep_dir / f"{src.stem}-{counter}{src.suffix}"
-        counter += 1
-    import shutil
-    shutil.copy2(src, dst)
-    return f"Saved to {dst}."
 
 
 def _prune_previews() -> None:
