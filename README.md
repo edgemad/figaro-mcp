@@ -108,6 +108,39 @@ when asked*.
 > `empty_trash` may need **Full Disk Access** for the host app on macOS when
 > protected/root-owned items are present; the tool returns instructions if so.
 
+## Updating (keeping customizations)
+
+Figaro is a re-branded **Jan.app** (bundle id `jan.ai.app`). It can be kept up
+to date from the official Jan releases without losing any modifications:
+
+- All user data (assistants, MCP servers, models, threads, settings) lives in
+  `~/Library/Application Support/Jan/data/` — separate from the app bundle, so
+  it is never touched by an update.
+- `figaro-update/figaro-update.py` downloads the latest
+  `Jan.app.tar.gz` from `github.com/janhq/jan/releases`, then **re-applies** the
+  Figaro display name, the icon (`figaro-update/figaro.icns`), and the ad-hoc
+  code signature before swapping the bundle:
+  ```bash
+  figaro-update/figaro-update.py check     # installed vs latest
+  figaro-update/figaro-update.py update    # install + relaunch
+  figaro-update/figaro-update.py rebrand   # re-apply branding only
+  ```
+- `scripts/com.figaro.rebrand.plist` is a **LaunchAgent** guard: it runs
+  `rebrand` every 30 minutes (and at login), so even if Jan's built-in Tauri
+  updater swaps the bundle silently, the Figaro icon/name are restored
+  automatically. Install it with:
+  ```bash
+  cp scripts/com.figaro.rebrand.plist ~/Library/LaunchAgents/
+  launchctl load ~/Library/LaunchAgents/com.figaro.rebrand.plist
+  ```
+- From chat, ask the Caretaker to "check for updates" (`check_for_update`) or
+  "update Figaro" (`update_figaro`) — it runs the same script in the
+  background and reopens the app when done.
+
+> Note: the OS-level process name remains "Jan" (embedded in the binary and not
+> patchable) — everything inside the app and everywhere in the filesystem is
+> branded as Figaro.
+
 ## Stability notes
 
 - The image server grabs its pipeline under a lock so the idle-unload watchdog

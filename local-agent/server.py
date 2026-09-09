@@ -171,6 +171,48 @@ def clear_temp(dry_run: bool = True) -> str:
             "would be cleared. Run with dry_run=False to clear.")
 
 
+@mcp.tool()
+def check_for_update() -> str:
+    """Check whether a newer Figaro (Jan) release is available from the
+    official Jan GitHub releases. Returns installed vs latest version and a
+    download link. Fully read-only."""
+    try:
+        out = subprocess.run(
+            ["/usr/bin/python3", "/Users/edge/figaro-update/figaro-update.py", "check"],
+            capture_output=True, text=True, timeout=60,
+        )
+        return (out.stdout or out.stderr or "check failed").strip().splitlines()[-1]
+    except Exception as e:  # noqa: BLE001 - never crash the tool
+        return f"Could not check for updates: {e}"
+
+
+@mcp.tool()
+def update_figaro() -> str:
+    """Download and install the latest Figaro (Jan) release from the official
+    Jan GitHub releases, preserving the Figaro icon/name/signature and all
+    user data. Runs in the background: Figaro will quit and reopen by itself
+    when the download finishes. Reply immediately; do not wait."""
+    script = Path.home() / "figaro-update" / "figaro-update.py"
+    if not script.exists():
+        return f"Updater not found at {script}."
+    log_file = Path.home() / "Library" / "Logs" / "figaro-update.log"
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    with log_file.open("a") as f:
+        f.write("\n---- update requested from chat ----\n")
+    try:
+        subprocess.Popen(
+            ["/usr/bin/python3", str(script), "update"],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+    except Exception as e:  # noqa: BLE001
+        return f"Could not start the update: {e}"
+    return ("Update started in the background. It will download the latest "
+            "Jan release, install it while keeping every Figaro customization "
+            "and all local data, then reopen Figaro automatically. Progress is "
+            "logged to ~/Library/Logs/figaro-update.log")
+
+
 def main() -> None:
     mcp.run()
 
