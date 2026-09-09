@@ -268,15 +268,96 @@ def save_image(preview_path: str = "", name: str = "") -> str:
     return f"Saved permanently to {dst}."
 
 
+@mcp.tool()
+def make_document(name: str, format: str = "docx", content: str = "") -> str:
+    """Create a real file from compiled text so the user can view or download
+    it in the chat. Writes ONLY an ephemeral preview into the app's preview
+    folder (auto-cleaned); it is NEVER saved permanently. Use this ONLY after
+    the user asks for a file (e.g. 'make it a Word document', 'download it').
+    - name: file name without extension (e.g. 'freedom-promotions-2026').
+    - format: 'docx' (Word, default), 'md', 'txt', or 'rtf'.
+    - content: the full document text/markdown to put in the file.
+    Returns a short link the assistant presents inline in the chat."""
+    fmt = format.lower().lstrip(".")
+    if fmt not in ("docx", "md", "txt", "rtf"):
+        return f"Unsupported format '{format}'. Use docx, md, txt or rtf."
+    doc_name = f"doc-{name or 'document'}-{uuid.uuid4().hex[:4]}.{fmt}"
+    if fmt == "docx":
+        try:
+            from docx import Document
+        except ImportError:
+            return "Word support is not installed; use format 'rtf' or 'md' instead."
+        doc = Document()
+        for line in content.splitlines():
+            doc.add_paragraph(line)
+        out_path = OUTPUT_DIR / doc_name
+        doc.save(out_path)
+    else:
+        out_path = OUTPUT_DIR / doc_name
+        if fmt == "rtf":
+            esc = content.replace("\\", "\\\\").replace("{", "\\{").replace("}", "\\}")
+            rtf = ("{\\rtf1\\ansi\\deff0 {\\fonttbl {\\f0 Courier;}} \\f0 " +
+                   esc.replace("\n", "\\par\n") + "}")
+            out_path.write_text(rtf, encoding="utf-8")
+        else:
+            out_path.write_text(content, encoding="utf-8")
+    _prune_previews()
+    url = _asset_url(out_path)
+    return (
+        f"File created (ephemeral, not saved). View or download it in the "
+        f"chat: {url}\n"
+        "This preview is NOT saved permanently. If the user wants to keep "
+        'it, say "save this document" and I will save it.'
+    )
+
+
+@mcp.tool()
+def save_document(preview: str = "") -> str:
+    """Permanently save a document preview (from make_document) into
+    ~/Documents/Figaro. Call ONLY when the user explicitly asks to save the
+    file. - preview: the preview link/path shown in the chat earlier (empty =
+    the most recent document preview)."""
+    if not preview:
+        docs = sorted(
+            list(OUTPUT_DIR.glob("*.docx"))
+            + list(OUTPUT_DIR.glob("*.rtf"))
+            + list(OUTPUT_DIR.glob("*.md"))
+            + list(OUTPUT_DIR.glob("*.txt")),
+            key=lambda p: p.stat().st_mtime,
+        )
+        if not docs:
+            return "No document preview found. Ask me to make a document first."
+        src = docs[-1]
+    else:
+        p = preview.replace("asset://localhost/", "")
+        from urllib.parse import unquote
+        src = Path(unquote(p))
+        if not src.is_file():
+            return f"Document preview not found: {preview}"
+    keep_dir = Path.home() / "Documents" / "Figaro"
+    keep_dir.mkdir(parents=True, exist_ok=True)
+    dst = keep_dir / src.name
+    counter = 1
+    while dst.exists():
+        dst = keep_dir / f"{src.stem}-{counter}{src.suffix}"
+        counter += 1
+    import shutil
+    shutil.copy2(src, dst)
+    return f"Saved to {dst}."
+
+
 def _prune_previews() -> None:
     """Delete preview images older than PRUNE_AFTER_HOURS so the preview
     folder doesn't accumulate files (chat-rendered images stay intact
     while recent)."""
     try:
         cutoff = time.time() - PRUNE_AFTER_HOURS * 3600
-        for p in list(OUTPUT_DIR.glob("figaro-img-*.png")) + list(
-            OUTPUT_DIR.glob("jan-img-*.png")
-        ):
+        for p in (list(OUTPUT_DIR.glob("figaro-img-*.png"))
+                  + list(OUTPUT_DIR.glob("jan-img-*.png"))
+                  + list(OUTPUT_DIR.glob("doc-*.docx"))
+                  + list(OUTPUT_DIR.glob("doc-*.rtf"))
+                  + list(OUTPUT_DIR.glob("doc-*.md"))
+                  + list(OUTPUT_DIR.glob("doc-*.txt"))):
             try:
                 if p.stat().st_mtime < cutoff:
                     p.unlink()
